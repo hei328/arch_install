@@ -7,8 +7,12 @@
 
 # Maybe add a log file
 
+# Define ANSI escape codes for colors
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
 # Backup Reminder
-echo "### IMPORTANT ###"
+echo "${RED}### IMPORTANT ###${NC}"
 echo "Before proceeding, ensure you have backed up any important data on the disk."
 echo "Disk partitioning and formatting operations can lead to data loss."
 read -p "Have you backed up your data? (y/n): " backup_confirmation
@@ -70,30 +74,38 @@ if [[ ! -e "$disk" ]]; then
 fi
 
 fdisk "$disk" <<EOF
-g    # Create a new GPT partition table
-n    # Create a new partition
-1    # Partition number (EFI system partition)
-    # Default start sector
-$efi_size # Size of the EFI partition
-n    # Create a new partition
-2    # Partition number (Linux swap)
-    # Default start sector
-$swap_size # Size of the swap partition
-n    # Create a new partition
-3    # Partition number (Linux root)
-    # Default start sector
-    # Default size (remainder of the device)
-t    # Change partition type
-1    # Select the EFI partition
-1    # Set type to EFI System
-t    # Change partition type
-2    # Select the swap partition
-19   # Set type to Linux swap
-t    # Change partition type
-3    # Select the Linux root partition
-23   # Set type to Linux x86_64 root (/)
-w    # Write changes and exit
+g
+n
+1
+
+$efi_size
+n
+2
+
+$swap_size
+n
+3
+
+
+t
+1
+1
+t
+2
+19
+t
+3
+23
+p
+w
 EOF
+
+# Prompt for confirmation
+read -p "Is the partition table correct? (y/n): " confirm
+if [ "$confirm" != "y" ]; then
+    echo "Aborted by user. Exiting..."
+    exit 1
+fi
 
 # Format and mount the partitions
 echo "Formatting and mounting partitions..."
@@ -124,16 +136,8 @@ echo "Setting up swap..."
 mkswap "$swap_partition" || { echo "Error: Failed to set up swap."; exit 1; }
 swapon "$swap_partition" || { echo "Error: Failed to enable swap."; exit 1; }
 
-# Check internet connectivity
-ping -c 3 bing.com || { echo "Error: No internet connectivity. Please connect to the internet and run the script again."; exit 1; }
-
-# Select the mirrors
-echo "Selecting mirrors..."
-echo "Enter one or more country names separated by space (e.g., UnitedStates Germany): "
-read -a country_names
-
-# Use reflector with user-specified country names
-reflector --verbose --protocol https --country "${country_names[@]}" --download-timeout 15 --sort rate --save /etc/pacman.d/mirrorlist || { echo "Error: Mirror selection failed."; exit 1; }
+# Use reflector with user-specified country names ####OMITTED#### --country "${country_names}"
+reflector --verbose --protocol https --download-timeout 10 --sort rate --save /etc/pacman.d/mirrorlist || { echo "Error: Mirror selection failed."; exit 1; }
 
 # Install essential packages
 echo "Installing essential packages..."
