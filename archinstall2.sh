@@ -12,6 +12,15 @@
 ### Added heredoc to chroot
 ### Added sleep 30 to end of script
 
+# Log file location
+LOG_FILE="/root/logfile.log"
+
+# Create the log file if it doesn't exist
+touch "$LOG_FILE"
+
+# Redirect stdout and stderr to the log file
+exec > >(tee -a "$LOG_FILE") 2>&1
+
 if [ "$(tput colors)" -ge 8 ]; then
     # Terminal supports colors
     RED=$(tput setaf 1)
@@ -186,7 +195,7 @@ read hostname
 
 # Set root password
 echo -e "${RED}Setting the root password...${NC}"
-read rootpass
+read -s rootpass
 
 # Create a new user
 echo -e "${RED}Enter a username for the new user: ${NC}"
@@ -194,7 +203,7 @@ read username
 
 # Set the password for the new user
 echo -e "${RED}Setting the password for $username...${NC}"
-read userpass
+read -s userpass
 
 
 set -e # Debugging
@@ -202,90 +211,35 @@ set -e # Debugging
 # Chroot into the installed system
 echo "Chrooting into the installed system..."
 arch-chroot /mnt <<EOF
-
-# Essential packages in the chroot environment
 echo "Installing essential packages in the chroot environment..."
-
-# Install microcode based on CPU vendor
 if grep -q "GenuineIntel" /proc/cpuinfo; then
     pacman -S --noconfirm intel-ucode
 elif grep -q "AuthenticAMD" /proc/cpuinfo; then
     pacman -S --noconfirm amd-ucode
 fi
-
-# Install other essential packages
 pacman -S --noconfirm less nano sudo neofetch reflector grub efibootmgr dosfstools os-prober mtools networkmanager || { echo "Error: Failed to install essential packages."; exit 1; }
-
-# Time zone
 echo "Setting the time zone..."
-
-# # List available countries
-# echo "Available countries:"
-# ls /usr/share/zoneinfo
-
-# # Prompt for country
-# echo -e "${RED}Enter your country (e.g., Europe, America, Asia): ${NC}"
-# read country
-
-# # List available cities for the selected country
-# echo "Available cities for $country:"
-# ls "/usr/share/zoneinfo/$country"
-
-# # Prompt for city
-# echo -e "${RED}Enter your city (e.g., Berlin, New_York, Shanghai): ${NC}"
-# read city
-
-# Create the symbolic link based on the selected country and city
 ln -sf "/usr/share/zoneinfo/$country/$city" /etc/localtime
 hwclock --systohc
-
-# Localization
 echo "Setting up localization..."
 sed -i '/en_US.UTF-8/s/^#//g' /etc/locale.gen
 locale-gen
 echo "LANG=en_US.UTF-8" > /etc/locale.conf
-
-# # Network configuration
 echo "Setting up network configuration..."
-# echo -e "${RED}Enter the hostname: ${NC}"
-# read hostname
 echo "$hostname" > /etc/hostname
 systemctl enable NetworkManager
-
-# Set root password
 echo -e "${RED}Setting the root password...${NC}"
 passwd "$rootpass"
-
-# Create a new user
 echo -e "${RED}Creating the new user... ${NC}"
 useradd "$username"
-
-# Set the password for the new user
 echo -e "${RED}Setting the password for $username...${NC}"
 passwd "$username" "$userpass"
-
-# Add the user to the wheel group
 usermod -aG wheel "$username"
-
-# Uncomment the wheel group in visudo to allow members to execute any command
 echo "Uncommenting the wheel group in visudo to allow members to execute any command..."
 sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /etc/sudoers
-
-# Grub
 echo "Installing and configuring Grub..."
 grub-install --target=x86_64-efi --bootloader-id=GRUB --efi-directory=/boot
 grub-mkconfig -o /boot/grub/grub.cfg
-
-# Confirm Grub installation
-#read -p "Grub installation and configuration completed successfully. Press Enter to continue."
-
-# Reminder to remove installation medium
 echo "Installation complete. Before starting your system, remember to remove the installation medium (USB, DVD, etc.)."
 exit
 EOF
-sleep 30
-umount -R /mnt
-
-# Shutdown
-echo "Shutting down the system..."
-shutdown now
