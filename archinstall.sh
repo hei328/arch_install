@@ -5,17 +5,23 @@
 # This script FORMATS YOUR DISK. 
 # Use with caution.
 
-# Maybe add a log file
+### Maybe add a log file
+### Maybe add checkpoints
 
-# Define ANSI escape codes for colors
-RED='\033[0;31m'
-NC='\033[0m' # No Color
+if [ "$(tput colors)" -ge 8 ]; then
+    # Terminal supports colors
+    RED=$(tput setaf 1)
+    NC=$(tput sgr0) # Reset color
+else
+    # Terminal does not support colors
+    echo "This terminal does not support colors."
+fi
 
 # Backup Reminder
-echo "${RED}### IMPORTANT ###${NC}"
+echo -e "${RED}### IMPORTANT ###${NC}"
 echo "Before proceeding, ensure you have backed up any important data on the disk."
 echo "Disk partitioning and formatting operations can lead to data loss."
-read -p "Have you backed up your data? (y/n): " backup_confirmation
+read -p "${RED}Have you backed up your data?(y/n): ${NC}" backup_confirmation
 
 if [[ "$backup_confirmation" != "y" ]]; then
     echo "Please back up your data before proceeding with the installation."
@@ -23,7 +29,7 @@ if [[ "$backup_confirmation" != "y" ]]; then
 fi
 
 # Welcome message
-echo "##### Welcome to the ArchLinux Installation Script #####"
+echo -e "${RED}##### Welcome to the ArchLinux Installation Script #####${NC}"
 
 # Verify Boot Mode
 efi_mode=$(cat /sys/firmware/efi/fw_platform_size)
@@ -42,14 +48,14 @@ timedatectl set-ntp true
 # Partition the disks
 echo "Partitioning the disks..."
 fdisk -l
-echo "Choose the disk to be partitioned (e.g., /dev/sda): "
+echo -e "${RED}Choose the disk to be partitioned (e.g., /dev/sda): ${NC}"
 read disk
 echo "Selected disk: $disk"
 read -p "Enter the size for the EFI partition (e.g., +300M): " efi_size
 read -p "Enter the size for the swap partition (e.g., +2G): " swap_size
 
 # User confirmation before formatting disks
-echo "### WARNING ###"
+echo -e "${RED}### WARNING ###${NC}"
 echo "Before proceeding, ensure you have selected the correct disk for partitioning."
 echo "All data on the selected disk will be permanently deleted."
 
@@ -60,7 +66,7 @@ echo "  1. EFI System Partition (size: $efi_size)"
 echo "  2. Linux Swap Partition (size: $swap_size)"
 echo "  3. Linux Root Partition (size: remainder of the device)"
 
-read -p "Have you selected the correct disk and backed up your data? (y/n): " disk_confirmation
+read -pe "${RED}Have you selected the correct disk and backed up your data? (y/n): ${NC}" disk_confirmation
 
 if [[ "$disk_confirmation" != "y" ]]; then
     echo "Please double-check your disk selection and back up your data before proceeding."
@@ -101,7 +107,7 @@ w
 EOF
 
 # Prompt for confirmation
-read -p "Is the partition table correct? (y/n): " confirm
+read -pe "${RED}Is the partition table correct? (y/n): ${NC}" confirm
 if [ "$confirm" != "y" ]; then
     echo "Aborted by user. Exiting..."
     exit 1
@@ -139,6 +145,10 @@ swapon "$swap_partition" || { echo "Error: Failed to enable swap."; exit 1; }
 # Use reflector with user-specified country names ####OMITTED#### --country "${country_names}"
 reflector --verbose --protocol https --download-timeout 10 --sort rate --save /etc/pacman.d/mirrorlist || { echo "Error: Mirror selection failed."; exit 1; }
 
+# Upgrades the keyring package first
+echo "Upgrading keyring package..."
+pacman -Sy archlinux-keyring
+
 # Install essential packages
 echo "Installing essential packages..."
 pacstrap /mnt base linux linux-firmware || { echo "Error: Failed to install essential packages."; exit 1; }
@@ -172,7 +182,7 @@ echo "Available countries:"
 ls /usr/share/zoneinfo
 
 # Prompt for country
-echo "Enter your country (e.g., Europe, America, Asia): "
+echo -e "${RED}Enter your country (e.g., Europe, America, Asia): ${NC}"
 read country
 
 # List available cities for the selected country
@@ -180,7 +190,7 @@ echo "Available cities for $country:"
 ls "/usr/share/zoneinfo/$country"
 
 # Prompt for city
-echo "Enter your city (e.g., Berlin, New_York, Shanghai): "
+echo -e "${RED}Enter your city (e.g., Berlin, New_York, Shanghai): ${NC}"
 read city
 
 # Create the symbolic link based on the selected country and city
@@ -195,21 +205,21 @@ echo "LANG=en_US.UTF-8" > /etc/locale.conf
 
 # Network configuration
 echo "Setting up network configuration..."
-echo "Enter the hostname: "
+echo -e "${RED}Enter the hostname: ${NC}"
 read hostname
 echo "$hostname" > /etc/hostname
 systemctl enable NetworkManager
 
 # Set root password
-echo "Setting the root password..."
+echo -e "${RED}Setting the root password...${NC}"
 passwd
 
 # Create a new user
-echo "Enter a username for the new user: "
+echo -e "${RED}Enter a username for the new user: ${NC}"
 read username
 
 # Set the password for the new user
-echo "Setting the password for $username..."
+echo -e "${RED}Setting the password for $username...${NC}"
 passwd "$username"
 
 # Add the user to the wheel group
