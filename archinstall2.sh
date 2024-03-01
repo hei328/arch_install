@@ -239,6 +239,10 @@ echo "Uncommenting the wheel group in visudo to allow members to execute any com
 sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /etc/sudoers
 echo "Installing and configuring Grub..."
 grub-install --target=x86_64-efi --bootloader-id=GRUB --efi-directory=/boot
+if [ $? -ne 0 ]; then
+    echo "Error: GRUB installation failed."
+    exit 1
+fi
 grub-mkconfig -o /boot/grub/grub.cfg
 echo "Installation complete. Before starting your system, remember to remove the installation medium (USB, DVD, etc.)."
 exit
