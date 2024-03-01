@@ -156,7 +156,7 @@ mkswap "$swap_partition" || { echo "Error: Failed to set up swap."; exit 1; }
 swapon "$swap_partition" || { echo "Error: Failed to enable swap."; exit 1; }
 
 # Use reflector with user-specified country names ####OMITTED#### --country "${country_names}"
-#reflector --verbose --protocol https --download-timeout 10 --sort rate --save /etc/pacman.d/mirrorlist || { echo "Error: Mirror selection failed."; exit 1; }
+reflector --verbose --protocol https --download-timeout 10 --sort rate --save /etc/pacman.d/mirrorlist || { echo "Error: Mirror selection failed."; exit 1; }
 
 # Upgrades the keyring package first
 echo "Upgrading keyring package..."
